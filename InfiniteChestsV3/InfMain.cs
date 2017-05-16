@@ -65,13 +65,13 @@ namespace InfiniteChestsV3
 
 			Commands.ChatCommands.Add(new Command("ic.use", ChestCMD, "chest"));
 			Commands.ChatCommands.Add(new Command("ic.convert", ConvChestsAsync, "convchests"));
+			Commands.ChatCommands.Add(new Command("ic.transfer", TransferAsync, "transfer"));
 		}
 
 		private async void OnWorldLoadAsync(EventArgs args)
 		{
 			await Task.Factory.StartNew(() => {
 				lockChests = true;
-				TSPlayer.Server.SendInfoMessage("Converting chests...");
 				int count = InnerConvChests();
 				TSPlayer.Server.SendInfoMessage("Converted " + count + " chests.");
 				lockChests = false;
@@ -259,7 +259,7 @@ namespace InfiniteChestsV3
 								break;
 							case ChestAction.None:
 								//check for perms
-								if (gchest.id != -1 && gchest.id != gplayer.User.ID && !gchest.isPublic && !gchest.users.Contains(gplayer.User.ID) && !gchest.groups.Contains(gplayer.Group.Name) && !gplayer.HasPermission("ic.edit"))
+								if (gchest.userid != -1 && !gchest.isPublic && !gchest.groups.Contains(gplayer.Group.Name) && !gplayer.HasPermission("ic.edit") && gplayer.IsLoggedIn && gchest.userid != gplayer.User.ID && !gchest.users.Contains(gplayer.User.ID))
 								{
 									gplayer.SendErrorMessage("This chest is protected.");
 								}
@@ -267,7 +267,7 @@ namespace InfiniteChestsV3
 								info.ChestIdInUse = gchest.id;
 
 								Item[] items;
-								RefillChestInfo rcinfo = GetRCInfo(gplayer.User.ID, gchest.id);
+								RefillChestInfo rcinfo = GetRCInfo(!gplayer.IsLoggedIn ? -1 : gplayer.User.ID, gchest.id);
 
 								//use refill items if exists, or create new refill entry, or use items directly
 								if (gchest.isRefill && rcinfo != null && (DateTime.Now - rcinfo.TimeOpened).TotalSeconds < gchest.refill)
@@ -275,13 +275,13 @@ namespace InfiniteChestsV3
 								else if (gchest.isRefill)
 								{
 									if (rcinfo != null)
-										DeleteOldRCInfo(gplayer.User.ID, gchest.id);
+										DeleteOldRCInfo(!gplayer.IsLoggedIn ? -1 : gplayer.User.ID, gchest.id);
 
 									RefillChestInfo newrcinfo = new RefillChestInfo()
 									{
 										ChestID = gchest.id,
 										CurrentItems = gchest.items,
-										PlayerID = gplayer.User.ID,
+										PlayerID = !gplayer.IsLoggedIn ? -1 : gplayer.User.ID,
 										TimeOpened = DateTime.Now
 									};
 									RCInfos.Add(newrcinfo);
@@ -336,7 +336,7 @@ namespace InfiniteChestsV3
 						if (piinfo.ChestIdInUse == -1)
 							return;
 						InfChest cichest = DB.GetChest(piinfo.ChestIdInUse);
-						RefillChestInfo circinfo = GetRCInfo(TShock.Players[index].User.ID, cichest.id);
+						RefillChestInfo circinfo = GetRCInfo(!TShock.Players[index].IsLoggedIn ? -1 : TShock.Players[index].User.ID, cichest.id);
 						if (cichest == null)
 						{
 							ciplayer.SendWarningMessage("This chest is corrupted. Please remove it.");
@@ -859,6 +859,23 @@ namespace InfiniteChestsV3
 			}
 			TShock.Utils.SaveWorld();
 			return count;
+		}
+
+		private async void TransferAsync(CommandArgs args)
+		{
+			if (args.Parameters.Count == 1 && args.Parameters[0].ToLower() == "confirm")
+			{
+				args.Player.SendInfoMessage("Converting chests from previous database. This may take a few minutes.");
+				await Task.Factory.StartNew(() =>
+				{
+					int count = DB.TransferV2();
+					args.Player.SendSuccessMessage("Transfer complete. Count: " + count);
+				});
+			}
+			else
+			{
+				args.Player.SendWarningMessage("WARNING: This command will permanently delete your old chests database for this world after the transfer is complete. Type '{0}transfer confirm' to proceed.".SFormat(TShock.Config.CommandSpecifier));
+			}
 		}
 	}
 }

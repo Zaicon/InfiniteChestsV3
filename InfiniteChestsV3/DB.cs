@@ -1,12 +1,9 @@
 ﻿using Mono.Data.Sqlite;
 using MySql.Data.MySqlClient;
-using System;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Terraria;
 using TShockAPI;
 using TShockAPI.DB;
@@ -203,6 +200,64 @@ namespace InfiniteChestsV3
 				}
 				return count;
 			}
+		}
+
+		public static int TransferV2()
+		{
+			InfMain.lockChests = true;
+			List<InfChest> chests = new List<InfChest>();
+
+			string query = $"SELECT * FROM InfChests WHERE WorldID = {Main.worldID};";
+			using (var reader = db.QueryReader(query))
+			{
+				while (reader.Read())
+				{
+					int id = reader.Get<int>("ID");
+					int userid = reader.Get<int>("UserID");
+					int x = reader.Get<int>("X");
+					int y = reader.Get<int>("Y");
+					bool ispublic = reader.Get<int>("Public") == 1 ? true : false;
+					List<int> users = string.IsNullOrEmpty(reader.Get<string>("Users")) ? new List<int>() : reader.Get<string>("Users").Split(',').ToList().ConvertAll(p => int.Parse(p));
+					List<string> groups = string.IsNullOrEmpty(reader.Get<string>("Groups")) ? new List<string>() : reader.Get<string>("Groups").Split(',').ToList();
+					int refill = reader.Get<int>("Refill");
+					InfChest chest = new InfChest(userid, x, y, Main.worldID)
+					{
+						id = id,
+						groups = groups,
+						isPublic = ispublic,
+						items = new Item[40],
+						refill = refill,
+						users = users
+					};
+					chests.Add(chest);
+					
+				}
+			}
+
+			foreach (InfChest chest in chests)
+			{
+				query = $"SELECT * FROM ChestItems WHERE ChestID = {chest.id};";
+				using (var reader = db.QueryReader(query))
+				{
+					while (reader.Read())
+					{
+						int slot = reader.Get<int>("Slot");
+						int type = reader.Get<int>("Type");
+						int stack = reader.Get<int>("Stack");
+						int prefix = reader.Get<int>("Prefix");
+						Item item = new Item();
+						item.SetDefaults(type);
+						item.stack = stack;
+						item.prefix = (byte)prefix;
+						chest.items[slot] = item;
+					}
+				}
+
+				AddChest(chest);
+			}
+			InfMain.lockChests = false;
+
+			return chests.Count;
 		}
 	}
 }

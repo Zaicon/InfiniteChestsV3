@@ -348,6 +348,39 @@ namespace InfiniteChestsV3
 						item.stack = stack;
 						item.prefix = prefix;
 
+						if (ciplayer.HasPermission(Permissions.spawnmob) && Main.hardMode && (item.netID == 3092 && ciplayer.TPlayer.ZoneHoly) || (item.netID == 3091 && (ciplayer.TPlayer.ZoneCrimson || ciplayer.TPlayer.ZoneCorrupt)))
+						{
+							bool empty = true;
+							foreach (var initem in cichest.items)
+							{
+								if (initem?.netID != 0)
+								{
+									empty = false;
+								}
+							}
+							if (empty)
+							{
+								//kick player out of chest, kill chest, spawn appropriate mimic
+								piinfo.ChestIdInUse = -1;
+								ciplayer.SetData(PIString, piinfo);
+								NetMessage.SendData((int)PacketTypes.SyncPlayerChestIndex, -1, index, NetworkText.Empty, index, -1);
+								DB.DeleteChest(cichest.id);
+								WorldGen.KillTile(cichest.x, cichest.y, noItem: true);
+								NetMessage.SendTileSquare(ciplayer.Index, cichest.x, cichest.y, 3);
+
+								int type;
+								if (netid == 3092)
+									type = 475;
+								else if (netid == 3091 && ciplayer.TPlayer.ZoneCrimson)
+									type = 474;
+								else //if (netid == 3091 && ciplayer.TPlayer.ZoneCorrupt)
+									type = 473;
+
+								var npc = TShock.Utils.GetNPCById(type);
+								TSPlayer.Server.SpawnNPC(npc.type, npc.FullName, 1, ciplayer.TileX, ciplayer.TileY, 10, 10);
+							}
+						}
+
 						if (cichest.isRefill)
 							circinfo.CurrentItems[itemslot] = item;
 						else

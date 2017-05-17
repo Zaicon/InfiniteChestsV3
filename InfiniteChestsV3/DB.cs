@@ -230,6 +230,45 @@ namespace InfiniteChestsV3
 			}
 		}
 
+		public static int TransferV1()
+		{
+			InfMain.lockChests = true;
+			List<InfChest> chests = new List<InfChest>();
+
+			string query = $"SELECT * FROM Chests WHERE WorldID = {Main.worldID};";
+			using (var reader = db.QueryReader(query))
+			{
+				while (reader.Read())
+				{
+					int x = reader.Get<int>("X");
+					int y = reader.Get<int>("Y");
+					string account = reader.Get<string>("Account");
+					string rawitems = reader.Get<string>("Items");
+					int refill = reader.Get<int>("RefillTime");
+					User user = TShock.Users.GetUserByName(account);
+					InfChest chest = new InfChest(user == null ? -1 : user.ID, x, y, Main.worldID);
+					if (refill > -1)
+						chest.refill = refill;
+					string[] items = rawitems.Split(',');
+					for (int i = 0; i < 40; i++)
+					{
+						Item item = new Item();
+						item.SetDefaults(int.Parse(items[3 * i]));
+						item.stack = int.Parse(items[3 * i + 1]);
+						item.prefix = byte.Parse(items[3 * i + 2]);
+						chest.items[i] = item;
+					}
+					chests.Add(chest);
+				}
+			}
+			foreach (InfChest chest in chests)
+			{
+				AddChest(chest);
+			}
+			InfMain.lockChests = false;
+			return chests.Count;
+		}
+
 		public static int TransferV2()
 		{
 			InfMain.lockChests = true;

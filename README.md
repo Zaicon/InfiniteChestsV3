@@ -31,7 +31,7 @@ This is a completely rewritten version of MarioE's original InfiniteChests plugi
 /chest cancel - Cancels any of the above actions.
 /convchests [-r] - Converts any "real" chests to database chests (or reverse with `-r`).
 /prunechests - Permanently removes empty chests from the world and database.
-/transfer - Converts the database from InfiniteChestsV2 to InfiniteChestsV3. [TODO: Add V1 conversion]
+/transferchests - Converts the database from InfiniteChests V1 or V2 to InfiniteChestsV3.
 ```
 
 ###Permisisons
@@ -46,5 +46,5 @@ ic.refill - Enables use of /chest refill
 ic.edit - Allows player to edit any chest regardless of chest protection.
 ic.convert - Enables use of /convchests
 ic.prune - Enables use of /prunechests
-ic.fix - Enables use of /fixchests
+ic.transfer - Enables use of /transferchests
 ```

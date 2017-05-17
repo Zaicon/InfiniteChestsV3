@@ -64,10 +64,10 @@ namespace InfiniteChestsV3
 		{
 			DB.Connect();
 
-			Commands.ChatCommands.Add(new Command("ic.use", ChestCMD, "chest"));
+			Commands.ChatCommands.Add(new Command("ic.use", ChestCMD, "chest") { AllowServer = false });
 			Commands.ChatCommands.Add(new Command("ic.convert", ConvChestsAsync, "convchests"));
 			Commands.ChatCommands.Add(new Command("ic.prune", PruneChestsAsync, "prunechests"));
-			Commands.ChatCommands.Add(new Command("ic.transfer", TransferAsync, "transfer"));
+			Commands.ChatCommands.Add(new Command("ic.transfer", TransferAsync, "transferchests"));
 		}
 
 		private async void OnWorldLoadAsync(EventArgs args)
@@ -139,7 +139,7 @@ namespace InfiniteChestsV3
 						{
 							case ChestAction.GetInfo:
 								gplayer.SendInfoMessage($"X: {gchest.x} | Y: {gchest.y}");
-								string owner = gchest.userid == -1 ? "(None)" : TShock.Users.GetUserByID(gchest.userid).Name;
+								string owner = gchest.userid == -1 ? "(None)" : TShock.Users.GetUserByID(gchest.userid) == null ? "(Deleted User)" : TShock.Users.GetUserByID(gchest.userid).Name;
 								string ispublic = gchest.isPublic ? " (Public)" : "";
 								string isrefill = gchest.refill > -1 ? $" (Refill: {gchest.refill})" : "";
 								gplayer.SendInfoMessage($"Chest Owner: {owner}{ispublic}{isrefill}");
@@ -152,7 +152,7 @@ namespace InfiniteChestsV3
 									gplayer.SendInfoMessage("Groups Allowed: (None)");
 								if (gchest.users.Count > 0)
 								{
-									string tinfo = string.Join(", ", gchest.users.Select(p => TShock.Users.GetUserByID(p).Name));
+									string tinfo = string.Join(", ", gchest.users.Select(p => TShock.Users.GetUserByID(p) == null ? "(Deleted User)" : TShock.Users.GetUserByID(p).Name));
 									gplayer.SendInfoMessage($"Users Allowed: {tinfo}");
 								}
 								else
@@ -925,18 +925,38 @@ namespace InfiniteChestsV3
 
 		private async void TransferAsync(CommandArgs args)
 		{
-			if (args.Parameters.Count == 1 && args.Parameters[0].ToLower() == "confirm")
+			if (args.Parameters.Count != 1)
 			{
-				args.Player.SendInfoMessage("Converting chests from previous database. This may take a few minutes.");
-				await Task.Factory.StartNew(() =>
-				{
-					int count = DB.TransferV2();
-					args.Player.SendSuccessMessage("Transfer complete. Count: " + count);
-				});
+				args.Player.SendErrorMessage("Please specify whether you want to transfer version 1 ('v1') or version 2 ('v2') chest database!");
+				return;
 			}
-			else
+			switch (args.Parameters[0].ToLower())
 			{
-				args.Player.SendWarningMessage("WARNING: This command will permanently delete your old chests database for this world after the transfer is complete. Type '{0}transfer confirm' to proceed.".SFormat(TShock.Config.CommandSpecifier));
+				case "version 1":
+				case "version1":
+				case "v1":
+				case "1":
+					args.Player.SendInfoMessage("Converting chests from previous database. This may take a few minutes.");
+					await Task.Factory.StartNew(() =>
+					{
+						int count = DB.TransferV1();
+						args.Player.SendSuccessMessage("Transfer complete. Count: " + count);
+					});
+					break;
+				case "version 2":
+				case "version2":
+				case "v2":
+				case "2":
+					args.Player.SendInfoMessage("Converting chests from previous database. This may take a few minutes.");
+					await Task.Factory.StartNew(() =>
+					{
+						int count = DB.TransferV2();
+						args.Player.SendSuccessMessage("Transfer complete. Count: " + count);
+					});
+					break;
+				default:
+					args.Player.SendErrorMessage("Invalid option. Use /transferchests v1 or v2 to choose a database conversion type.");
+					break;
 			}
 		}
 	}

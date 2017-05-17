@@ -1,9 +1,11 @@
-﻿using Mono.Data.Sqlite;
+﻿using Microsoft.Xna.Framework;
+using Mono.Data.Sqlite;
 using MySql.Data.MySqlClient;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
+using System.Text;
 using Terraria;
 using TShockAPI;
 using TShockAPI.DB;
@@ -180,6 +182,32 @@ namespace InfiniteChestsV3
 		{
 			string query = $"DELETE FROM InfChests3 WHERE ID = {id};";
 			db.Query(query);
+		}
+
+		public static List<Point> DeleteEmptyChests()
+		{
+			StringBuilder sb = new StringBuilder();
+			for (int i = 0; i < 40; i++)
+			{
+				sb.Append("~0,0,0");
+			}
+			sb.Append("~");
+
+			List<Point> points = new List<Point>();
+
+			string query = $"SELECT * FROM InfChests3 WHERE Items = '{sb.ToString()}' AND WorldID = {Main.worldID} AND Refill = -1;";
+			using (var reader = db.QueryReader(query))
+			{
+				while (reader.Read())
+				{
+					Point point = new Point(reader.Get<int>("X"), reader.Get<int>("Y"));
+					points.Add(point);
+				}
+			}
+
+			query = $"DELETE FROM InfChests3 WHERE Items = '{sb.ToString()}' AND WorldID = {Main.worldID} AND Refill = -1;";
+			db.Query(query);
+			return points;
 		}
 
 		public static void DeleteAllChests()

@@ -8,7 +8,7 @@ This is a completely rewritten version of MarioE's original InfiniteChests plugi
 - Allows chests to be "claimed" (protected) by users.
 - Allows chests to be "public" (other users can edit but not destroy).
 - Allows chests to "refill" (chest contents are restored at a specified interval).
-- Allows players to destroy all empty chests automatically. [TODO]
+- Allows players to destroy all empty chests automatically.
 - Allows players to allow only certain users and/or groups to access protected chests.
 - Allows players to search the entire chest database for specific items.
 - Supports usage of Key of Light/Key of Night items.
@@ -30,7 +30,7 @@ This is a completely rewritten version of MarioE's original InfiniteChests plugi
 /chest refill <seconds> - Sets the interval in which chests refill items.
 /chest cancel - Cancels any of the above actions.
 /convchests [-r] - Converts any "real" chests to database chests (or reverse with `-r`).
-/prunechests - Permanently removes empty chests from the world and database. [TODO]
+/prunechests - Permanently removes empty chests from the world and database.
 /transfer - Converts the database from InfiniteChestsV2 to InfiniteChestsV3. [TODO: Add V1 conversion]
 ```
 

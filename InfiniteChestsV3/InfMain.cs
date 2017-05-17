@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Xna.Framework;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -65,6 +66,7 @@ namespace InfiniteChestsV3
 
 			Commands.ChatCommands.Add(new Command("ic.use", ChestCMD, "chest"));
 			Commands.ChatCommands.Add(new Command("ic.convert", ConvChestsAsync, "convchests"));
+			Commands.ChatCommands.Add(new Command("ic.prune", PruneChestsAsync, "prunechests"));
 			Commands.ChatCommands.Add(new Command("ic.transfer", TransferAsync, "transfer"));
 		}
 
@@ -862,6 +864,21 @@ namespace InfiniteChestsV3
 				 args.Player.SendSuccessMessage("Converted " + count + " chests.");
 				 usingInfChests = true;
 			 });
+		}
+
+		private async void PruneChestsAsync(CommandArgs args)
+		{
+			args.Player.SendInfoMessage("Pruning all empty chests. Please wait...");
+			await Task.Factory.StartNew(() =>
+			{
+				var points = DB.DeleteEmptyChests();
+				foreach (Point point in points)
+				{
+					WorldGen.KillTile(point.X, point.Y, noItem: true);
+					NetMessage.SendTileSquare(args.Player.Index, point.X, point.Y, 3);
+				}
+				args.Player.SendSuccessMessage("Pruned " + points.Count + " chests.");
+			});
 		}
 
 		private RefillChestInfo GetRCInfo(int playerID, int chestID)

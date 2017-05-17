@@ -423,12 +423,24 @@ namespace InfiniteChestsV3
 
 						args.Handled = true;
 
-						var action = reader.ReadByte(); //0 placec 1 killc 2 placed 4 killd
+						var action = reader.ReadByte(); //0 placec 1 killc 2 placed 3 killd 4 placegc
 						tilex = reader.ReadInt16();
 						tiley = reader.ReadInt16();
 						var style = reader.ReadInt16();
+						//21 chest
+						//88 dresser
+						//467 golden/crystal chest
+						int chesttype;
+						if (action == 0 || action == 1)
+							chesttype = 21;
+						else if (action == 2 || action == 3)
+							chesttype = 88;
+						else if (action == 4 || action == 5)
+							chesttype = 467;
+						else
+							throw new Exception();
 
-						if (action == 0 || action == 2)
+						if (action == 0 || action == 2 || action == 4)
 						{
 							if (TShock.Regions.CanBuild(tilex, tiley, TShock.Players[index]))
 							{
@@ -444,14 +456,14 @@ namespace InfiniteChestsV3
 								if (action == 2)
 									tilex++;
 
-								WorldGen.PlaceChest(tilex, tiley, (ushort)(action == 0 ? 21 : 88), false, style);
+								WorldGen.PlaceChest(tilex, tiley, (ushort)(chesttype), false, style);
 								Main.chest[0] = null;
 								NetMessage.SendData((int)PacketTypes.TileKill, -1, -1, NetworkText.Empty, action, tilex, tiley, style);
 							}
 						}
 						else
 						{
-							if (Main.tile[tilex, tiley].type != 21 && Main.tile[tilex, tiley].type != 80)
+							if (Main.tile[tilex, tiley].type != 21 && Main.tile[tilex, tiley].type != 88 && Main.tile[tilex, tiley].type != 467)
 								return;
 							if (TShock.Regions.CanBuild(tilex, tiley, TShock.Players[index]))
 							{

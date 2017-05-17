@@ -11,6 +11,7 @@ This is a completely rewritten version of MarioE's original InfiniteChests plugi
 - Allows players to destroy all empty chests automatically. [TODO]
 - Allows players to allow only certain users and/or groups to access protected chests.
 - Allows players to search the entire chest database for specific items.
+- Supports usage of Key of Light/Key of Night items.
 
 ### Things this plugin will not do (as of now):
 * Chest name support. Chest names are stored in tile data, which would be very costly to implement.
@@ -30,7 +31,7 @@ This is a completely rewritten version of MarioE's original InfiniteChests plugi
 /chest cancel - Cancels any of the above actions.
 /convchests [-r] - Converts any "real" chests to database chests (or reverse with `-r`).
 /prunechests - Permanently removes empty chests from the world and database. [TODO]
-/transfer - Converts the database from InfiniteChestsV2 to InfiniteChestsV3.
+/transfer - Converts the database from InfiniteChestsV2 to InfiniteChestsV3. [TODO: Add V1 conversion]
 ```
 
 ###Permisisons

@@ -446,17 +446,16 @@ namespace InfiniteChestsV3
 						{
 							if (TShock.Regions.CanBuild(tilex, tiley, TShock.Players[index]))
 							{
-								if (action == 2)
-									tilex--;
 
 								Task.Factory.StartNew(() =>
 								{
+									if (action == 2)
+										tilex--;
 									InfChest newChest = new InfChest(TShock.Players[index].HasPermission("ic.protect") ? TShock.Players[index].User.ID : -1, tilex, tiley - 1, Main.worldID);
 									DB.AddChest(newChest);
+									if (action == 2)
+										tilex++;
 								});
-
-								if (action == 2)
-									tilex++;
 
 								WorldGen.PlaceChest(tilex, tiley, (ushort)(chesttype), false, style);
 								Main.chest[0] = null;

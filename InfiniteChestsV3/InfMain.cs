@@ -486,7 +486,7 @@ namespace InfiniteChestsV3
 										TSPlayer.All.SendData(PacketTypes.Tile, "", 0, tilex, tiley + 1);
 									}
 									//check for perms - chest owner, claim, edit perm
-									else if (chest.userid != player.User.ID && chest.userid != -1 && !player.HasPermission("infchests.edit"))
+									else if (chest.userid != player.User.ID && chest.userid != -1 && !player.HasPermission("ic.edit"))
 									{
 										player.SendErrorMessage("This chest is protected.");
 										player.SendTileSquare(tilex, tiley, 3);

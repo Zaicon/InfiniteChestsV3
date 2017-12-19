@@ -264,6 +264,7 @@ namespace InfiniteChestsV3
 								if (gchest.userid != -1 && !gchest.isPublic && !gchest.groups.Contains(gplayer.Group.Name) && !gplayer.HasPermission("ic.edit") && gplayer.IsLoggedIn && gchest.userid != gplayer.User.ID && !gchest.users.Contains(gplayer.User.ID))
 								{
 									gplayer.SendErrorMessage("This chest is protected.");
+									break;
 								}
 
 								info.ChestIdInUse = gchest.id;

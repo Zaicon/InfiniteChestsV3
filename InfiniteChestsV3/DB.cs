@@ -1,6 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
 using Mono.Data.Sqlite;
 using MySql.Data.MySqlClient;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
@@ -235,32 +236,77 @@ namespace InfiniteChestsV3
 			InfMain.lockChests = true;
 			List<InfChest> chests = new List<InfChest>();
 
-			string query = $"SELECT * FROM Chests WHERE WorldID = {Main.worldID};";
-			using (var reader = db.QueryReader(query))
+			if (TShock.Config.StorageType == "sqlite")
 			{
-				while (reader.Read())
+				// We have to open a new db connection, as these tables are in different .sqlite files
+				try
 				{
-					int x = reader.Get<int>("X");
-					int y = reader.Get<int>("Y");
-					string account = reader.Get<string>("Account");
-					string rawitems = reader.Get<string>("Items");
-					int refill = reader.Get<int>("RefillTime");
-					User user = TShock.Users.GetUserByName(account);
-					InfChest chest = new InfChest(user == null ? -1 : user.ID, x, y, Main.worldID);
-					if (refill > -1)
-						chest.refill = refill;
-					string[] items = rawitems.Split(',');
-					for (int i = 0; i < 40; i++)
+					using (var v1conn = new SqliteConnection($"uri=file://{Path.Combine(TShock.SavePath, "chests.sqlite")},Version=3"))
 					{
-						Item item = new Item();
-						item.SetDefaults(int.Parse(items[3 * i]));
-						item.stack = int.Parse(items[3 * i + 1]);
-						item.prefix = byte.Parse(items[3 * i + 2]);
-						chest.items[i] = item;
+						string query = $"SELECT * FROM Chests WHERE WorldID = {Main.worldID};";
+						using (var reader = v1conn.QueryReader(query))
+						{
+							while (reader.Read())
+							{
+								int x = reader.Get<int>("X");
+								int y = reader.Get<int>("Y");
+								string account = reader.Get<string>("Account");
+								string rawitems = reader.Get<string>("Items");
+								int refill = reader.Get<int>("RefillTime");
+								User user = TShock.Users.GetUserByName(account);
+								InfChest chest = new InfChest(user == null ? -1 : user.ID, x, y, Main.worldID);
+								if (refill > -1)
+									chest.refill = refill;
+								string[] items = rawitems.Split(',');
+								for (int i = 0; i < 40; i++)
+								{
+									Item item = new Item();
+									item.SetDefaults(int.Parse(items[3 * i]));
+									item.stack = int.Parse(items[3 * i + 1]);
+									item.prefix = byte.Parse(items[3 * i + 2]);
+									chest.items[i] = item;
+								}
+								chests.Add(chest);
+							}
+						}
 					}
-					chests.Add(chest);
+				}
+				catch (Exception ex)
+				{
+					TShock.Log.ConsoleError(ex.ToString());
 				}
 			}
+			else
+			{
+				//Probably could just have this code once and switch db conn as needed, but #lazy
+				string query = $"SELECT * FROM Chests WHERE WorldID = {Main.worldID};";
+				using (var reader = db.QueryReader(query))
+				{
+					while (reader.Read())
+					{
+						int x = reader.Get<int>("X");
+						int y = reader.Get<int>("Y");
+						string account = reader.Get<string>("Account");
+						string rawitems = reader.Get<string>("Items");
+						int refill = reader.Get<int>("RefillTime");
+						User user = TShock.Users.GetUserByName(account);
+						InfChest chest = new InfChest(user == null ? -1 : user.ID, x, y, Main.worldID);
+						if (refill > -1)
+							chest.refill = refill;
+						string[] items = rawitems.Split(',');
+						for (int i = 0; i < 40; i++)
+						{
+							Item item = new Item();
+							item.SetDefaults(int.Parse(items[3 * i]));
+							item.stack = int.Parse(items[3 * i + 1]);
+							item.prefix = byte.Parse(items[3 * i + 2]);
+							chest.items[i] = item;
+						}
+						chests.Add(chest);
+					}
+				}
+			}
+
 			foreach (InfChest chest in chests)
 			{
 				AddChest(chest);
@@ -274,54 +320,120 @@ namespace InfiniteChestsV3
 			InfMain.lockChests = true;
 			List<InfChest> chests = new List<InfChest>();
 
-			string query = $"SELECT * FROM InfChests WHERE WorldID = {Main.worldID};";
-			using (var reader = db.QueryReader(query))
+			if (TShock.Config.StorageType == "sqlite")
 			{
-				while (reader.Read())
+				// We have to open a new db connection, as these tables are in different .sqlite files
+				try
 				{
-					int id = reader.Get<int>("ID");
-					int userid = reader.Get<int>("UserID");
-					int x = reader.Get<int>("X");
-					int y = reader.Get<int>("Y");
-					bool ispublic = reader.Get<int>("Public") == 1 ? true : false;
-					List<int> users = string.IsNullOrEmpty(reader.Get<string>("Users")) ? new List<int>() : reader.Get<string>("Users").Split(',').ToList().ConvertAll(p => int.Parse(p));
-					List<string> groups = string.IsNullOrEmpty(reader.Get<string>("Groups")) ? new List<string>() : reader.Get<string>("Groups").Split(',').ToList();
-					int refill = reader.Get<int>("Refill");
-					InfChest chest = new InfChest(userid, x, y, Main.worldID)
+					using (var v2conn = new SqliteConnection($"uri=file://{Path.Combine(TShock.SavePath, "chests.sqlite")},Version=3"))
 					{
-						id = id,
-						groups = groups,
-						isPublic = ispublic,
-						items = new Item[40],
-						refill = refill,
-						users = users
-					};
-					chests.Add(chest);
-					
+						string query = $"SELECT * FROM InfChests WHERE WorldID = {Main.worldID};";
+						using (var reader = v2conn.QueryReader(query))
+						{
+							while (reader.Read())
+							{
+								int id = reader.Get<int>("ID");
+								int userid = reader.Get<int>("UserID");
+								int x = reader.Get<int>("X");
+								int y = reader.Get<int>("Y");
+								bool ispublic = reader.Get<int>("Public") == 1 ? true : false;
+								List<int> users = string.IsNullOrEmpty(reader.Get<string>("Users")) ? new List<int>() : reader.Get<string>("Users").Split(',').ToList().ConvertAll(p => int.Parse(p));
+								List<string> groups = string.IsNullOrEmpty(reader.Get<string>("Groups")) ? new List<string>() : reader.Get<string>("Groups").Split(',').ToList();
+								int refill = reader.Get<int>("Refill");
+								InfChest chest = new InfChest(userid, x, y, Main.worldID)
+								{
+									id = id,
+									groups = groups,
+									isPublic = ispublic,
+									items = new Item[40],
+									refill = refill,
+									users = users
+								};
+								chests.Add(chest);
+
+							}
+						}
+
+						foreach (InfChest chest in chests)
+						{
+							query = $"SELECT * FROM ChestItems WHERE ChestID = {chest.id};";
+							using (var reader = v2conn.QueryReader(query))
+							{
+								while (reader.Read())
+								{
+									int slot = reader.Get<int>("Slot");
+									int type = reader.Get<int>("Type");
+									int stack = reader.Get<int>("Stack");
+									int prefix = reader.Get<int>("Prefix");
+									Item item = new Item();
+									item.SetDefaults(type);
+									item.stack = stack;
+									item.prefix = (byte)prefix;
+									chest.items[slot] = item;
+								}
+							}
+
+							AddChest(chest);
+						}
+					}
+				}
+				catch (Exception ex)
+				{
+					TShock.Log.ConsoleError(ex.ToString());
 				}
 			}
-
-			foreach (InfChest chest in chests)
+			else
 			{
-				query = $"SELECT * FROM ChestItems WHERE ChestID = {chest.id};";
+				string query = $"SELECT * FROM InfChests WHERE WorldID = {Main.worldID};";
 				using (var reader = db.QueryReader(query))
 				{
 					while (reader.Read())
 					{
-						int slot = reader.Get<int>("Slot");
-						int type = reader.Get<int>("Type");
-						int stack = reader.Get<int>("Stack");
-						int prefix = reader.Get<int>("Prefix");
-						Item item = new Item();
-						item.SetDefaults(type);
-						item.stack = stack;
-						item.prefix = (byte)prefix;
-						chest.items[slot] = item;
+						int id = reader.Get<int>("ID");
+						int userid = reader.Get<int>("UserID");
+						int x = reader.Get<int>("X");
+						int y = reader.Get<int>("Y");
+						bool ispublic = reader.Get<int>("Public") == 1 ? true : false;
+						List<int> users = string.IsNullOrEmpty(reader.Get<string>("Users")) ? new List<int>() : reader.Get<string>("Users").Split(',').ToList().ConvertAll(p => int.Parse(p));
+						List<string> groups = string.IsNullOrEmpty(reader.Get<string>("Groups")) ? new List<string>() : reader.Get<string>("Groups").Split(',').ToList();
+						int refill = reader.Get<int>("Refill");
+						InfChest chest = new InfChest(userid, x, y, Main.worldID)
+						{
+							id = id,
+							groups = groups,
+							isPublic = ispublic,
+							items = new Item[40],
+							refill = refill,
+							users = users
+						};
+						chests.Add(chest);
+
 					}
 				}
 
-				AddChest(chest);
+				foreach (InfChest chest in chests)
+				{
+					query = $"SELECT * FROM ChestItems WHERE ChestID = {chest.id};";
+					using (var reader = db.QueryReader(query))
+					{
+						while (reader.Read())
+						{
+							int slot = reader.Get<int>("Slot");
+							int type = reader.Get<int>("Type");
+							int stack = reader.Get<int>("Stack");
+							int prefix = reader.Get<int>("Prefix");
+							Item item = new Item();
+							item.SetDefaults(type);
+							item.stack = stack;
+							item.prefix = (byte)prefix;
+							chest.items[slot] = item;
+						}
+					}
+
+					AddChest(chest);
+				}
 			}
+
 			InfMain.lockChests = false;
 
 			return chests.Count;

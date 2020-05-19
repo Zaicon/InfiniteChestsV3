@@ -109,417 +109,461 @@ namespace InfiniteChestsV3
 				switch (args.MsgID)
 				{
 					case PacketTypes.ChestGetContents:
-						if (lockChests)
 						{
-							TShock.Players[args.Msg.whoAmI].SendWarningMessage("Chests are currently being converted. Please wait for a few moments.");
-							return;
-						}
-						var tilex = reader.ReadInt16();
-						var tiley = reader.ReadInt16();
-#if DEBUG
-						File.AppendAllText("debug.txt", $"[IN] 31 ChestGetContents: Tile X = {tilex} | Tile Y = {tiley}\n");
-#endif
-						args.Handled = true;
-
-						#region GetChest
-						InfChest gchest = DB.GetChest(tilex, tiley);
-						TSPlayer gplayer = TShock.Players[index];
-
-						if (gchest == null)
-						{
-							gplayer.SendErrorMessage("This chest is corrupted.");
-							WorldGen.KillTile(tilex, tiley);
-							TSPlayer.All.SendData(PacketTypes.Tile, "", 0, tilex, tiley + 1);
-							return;
-						}
-
-						PlayerInfo info = gplayer.GetData<PlayerInfo>(PIString);
-
-						switch (info.Action)
-						{
-							case ChestAction.GetInfo:
-								gplayer.SendInfoMessage($"X: {gchest.x} | Y: {gchest.y}");
-								string owner = gchest.userid == -1 ? "(None)" : TShock.Users.GetUserByID(gchest.userid) == null ? "(Deleted User)" : TShock.Users.GetUserByID(gchest.userid).Name;
-								string ispublic = gchest.isPublic ? " (Public)" : "";
-								string isrefill = gchest.refill > -1 ? $" (Refill: {gchest.refill})" : "";
-								gplayer.SendInfoMessage($"Chest Owner: {owner}{ispublic}{isrefill}");
-								if (gchest.groups.Count > 0 && !string.IsNullOrWhiteSpace(gchest.groups[0]))
-								{
-									string tinfo = string.Join(", ", gchest.groups);
-									gplayer.SendInfoMessage($"Groups Allowed: {tinfo}");
-								}
-								else
-									gplayer.SendInfoMessage("Groups Allowed: (None)");
-								if (gchest.users.Count > 0)
-								{
-									string tinfo = string.Join(", ", gchest.users.Select(p => TShock.Users.GetUserByID(p) == null ? "(Deleted User)" : TShock.Users.GetUserByID(p).Name));
-									gplayer.SendInfoMessage($"Users Allowed: {tinfo}");
-								}
-								else
-									gplayer.SendInfoMessage("Users Allowed: (None)");
-								break;
-							case ChestAction.Protect:
-								if (gchest.userid == gplayer.User.ID)
-									gplayer.SendErrorMessage("This chest is already claimed by you!");
-								else if (gchest.userid != -1 && !gplayer.HasPermission("ic.edit"))
-									gplayer.SendErrorMessage("This chest is already claimed by someone else!");
-								else
-								{
-									gchest.userid = gplayer.User.ID;
-									DB.UpdateUser(gchest);
-									gplayer.SendSuccessMessage("This chest is now claimed by you!");
-								}
-								break;
-							case ChestAction.Unprotect:
-								if (gchest.userid != gplayer.User.ID && !gplayer.HasPermission("ic.edit"))
-									gplayer.SendErrorMessage("This chest is not yours!");
-								else if (gchest.userid == -1)
-									gplayer.SendErrorMessage("This chest is not claimed!");
-								else
-								{
-									gchest.userid = -1;
-									DB.UpdateUser(gchest);
-									gplayer.SendSuccessMessage("This chest is no longer claimed.");
-								}
-								break;
-							case ChestAction.SetGroup:
-								if (gchest.userid != gplayer.User.ID && !gplayer.HasPermission("ic.edit"))
-									gplayer.SendErrorMessage("This chest is not yours!");
-								else if (gchest.userid == -1)
-									gplayer.SendErrorMessage("This chest is not claimed!");
-								else
-								{
-									if (gchest.groups.Contains(info.ExtraInfo))
-									{
-										gchest.groups.Remove(info.ExtraInfo);
-										gplayer.SendSuccessMessage($"Successfully removed group access from chest.");
-										DB.UpdateGroups(gchest);
-									}
-									else
-									{
-										gchest.groups.Add(info.ExtraInfo);
-										gplayer.SendSuccessMessage($"Successfully added group access to chest.");
-										DB.UpdateGroups(gchest);
-									}
-								}
-								break;
-							case ChestAction.SetRefill:
-								if (gchest.userid != gplayer.User.ID && !gplayer.HasPermission("ic.edit"))
-									gplayer.SendErrorMessage("This chest is not yours!");
-								else if (gchest.userid == -1)
-									gplayer.SendErrorMessage("This chest is not claimed!");
-								else
-								{
-									int refilltime = int.Parse(info.ExtraInfo);
-									gchest.refill = refilltime;
-									DB.UpdateRefill(gchest);
-									gplayer.SendSuccessMessage("Successfull set refill time to " + (refilltime == -1 ? "(none)." : refilltime.ToString() + "."));
-								}
-								break;
-							case ChestAction.SetUser:
-								if (gchest.userid != gplayer.User.ID && !gplayer.HasPermission("ic.edit"))
-									gplayer.SendErrorMessage("This chest is not yours!");
-								else if (gchest.userid == -1)
-									gplayer.SendErrorMessage("This chest is not claimed!");
-								else
-								{
-									int userid = int.Parse(info.ExtraInfo);
-									if (gchest.users.Contains(userid))
-									{
-										gchest.users.Remove(userid);
-										DB.UpdateUsers(gchest);
-										gplayer.SendSuccessMessage("Successfully removed user access from chest.");
-									}
-									else
-									{
-										gchest.users.Add(userid);
-										DB.UpdateUsers(gchest);
-										gplayer.SendSuccessMessage("Successfully added user access to chest.");
-									}
-								}
-								break;
-							case ChestAction.TogglePublic:
-								if (gchest.userid != gplayer.User.ID && !gplayer.HasPermission("ic.edit"))
-									gplayer.SendErrorMessage("This chest is not yours!");
-								else if (gchest.userid == -1)
-									gplayer.SendErrorMessage("This chest is not claimed!");
-								else
-								{
-									if (gchest.isPublic)
-									{
-										gchest.isPublic = false;
-										DB.UpdatePublic(gchest);
-										gplayer.SendSuccessMessage("Successfully set chest as private.");
-									}
-									else
-									{
-										gchest.isPublic = true;
-										DB.UpdatePublic(gchest);
-										gplayer.SendSuccessMessage("Successfully set chest as public.");
-									}
-								}
-								break;
-							case ChestAction.None:
-								//check for perms
-								if (gchest.userid != -1 && !gchest.isPublic && !gchest.groups.Contains(gplayer.Group.Name) && !gplayer.HasPermission("ic.edit") && gplayer.IsLoggedIn && gchest.userid != gplayer.User.ID && !gchest.users.Contains(gplayer.User.ID))
-								{
-									gplayer.SendErrorMessage("This chest is protected.");
-									break;
-								}
-
-								info.ChestIdInUse = gchest.id;
-
-								Item[] items;
-								RefillChestInfo rcinfo = GetRCInfo(!gplayer.IsLoggedIn ? -1 : gplayer.User.ID, gchest.id);
-
-								//use refill items if exists, or create new refill entry, or use items directly
-								if (gchest.isRefill && rcinfo != null && (DateTime.Now - rcinfo.TimeOpened).TotalSeconds < gchest.refill)
-									items = rcinfo.CurrentItems;
-								else if (gchest.isRefill)
-								{
-									if (rcinfo != null)
-										DeleteOldRCInfo(!gplayer.IsLoggedIn ? -1 : gplayer.User.ID, gchest.id);
-
-									RefillChestInfo newrcinfo = new RefillChestInfo()
-									{
-										ChestID = gchest.id,
-										CurrentItems = gchest.items,
-										PlayerID = !gplayer.IsLoggedIn ? -1 : gplayer.User.ID,
-										TimeOpened = DateTime.Now
-									};
-									RCInfos.Add(newrcinfo);
-									items = newrcinfo.CurrentItems;
-								}
-								else
-									items = gchest.items;
-
-								int tempchest = GetNextChestId();
-								Main.chest[tempchest] = new Chest()
-								{
-									item = items,
-									x = gchest.x,
-									y = gchest.y
-								};
-
-								for (int i = 0; i < 40; i++)
-								{
-									gplayer.SendData(PacketTypes.ChestItem, "", tempchest, i, gchest.items[i].stack, gchest.items[i].prefix, gchest.items[i].netID);
-								}
-								gplayer.SendData(PacketTypes.ChestOpen, "", tempchest, gchest.x, gchest.y);
-								NetMessage.SendData((int)PacketTypes.SyncPlayerChestIndex, -1, index, NetworkText.Empty, index, tempchest);
-
-								Main.chest[tempchest] = null;
-								break;
-						}
-						info.Action = ChestAction.None;
-						info.ExtraInfo = "";
-						gplayer.SetData(PIString, info);
-						#endregion
-
-						break;
-					case PacketTypes.ChestItem:
-						if (lockChests)
-						{
-							TShock.Players[args.Msg.whoAmI].SendWarningMessage("Chests are currently being converted. Please wait for a few moments.");
-							return;
-						}
-
-						var chestid = reader.ReadInt16();
-						var itemslot = reader.ReadByte();
-						var stack = reader.ReadInt16();
-						var prefix = reader.ReadByte();
-						var netid = reader.ReadInt16();
-#if DEBUG
-						if (itemslot == 0 || itemslot == 39)
-							File.AppendAllText("debug.txt", $"[IN] 32 ChestItem: Chest ID = {chestid} | Item Slot = {itemslot} | Stack = {stack} | Prefix = {prefix} | Net ID = {netid}\n");
-#endif
-
-						TSPlayer ciplayer = TShock.Players[index];
-						PlayerInfo piinfo = ciplayer.GetData<PlayerInfo>(PIString);
-						if (piinfo.ChestIdInUse == -1)
-							return;
-						InfChest cichest = DB.GetChest(piinfo.ChestIdInUse);
-						RefillChestInfo circinfo = GetRCInfo(!TShock.Players[index].IsLoggedIn ? -1 : TShock.Players[index].User.ID, cichest.id);
-						if (cichest == null)
-						{
-							ciplayer.SendWarningMessage("This chest is corrupted. Please remove it.");
-							return;
-						}
-
-						Item item = new Item();
-						item.SetDefaults(netid);
-						item.stack = stack;
-						item.prefix = prefix;
-
-						if (ciplayer.HasPermission(Permissions.spawnmob) && Main.hardMode && (item.netID == 3092 && ciplayer.TPlayer.ZoneHoly) || (item.netID == 3091 && (ciplayer.TPlayer.ZoneCrimson || ciplayer.TPlayer.ZoneCorrupt)))
-						{
-							bool empty = true;
-							foreach (var initem in cichest.items)
+							if (lockChests)
 							{
-								if (initem?.netID != 0)
-								{
-									empty = false;
-								}
-							}
-							if (empty)
-							{
-								//kick player out of chest, kill chest, spawn appropriate mimic
-								piinfo.ChestIdInUse = -1;
-								ciplayer.SetData(PIString, piinfo);
-								NetMessage.SendData((int)PacketTypes.SyncPlayerChestIndex, -1, index, NetworkText.Empty, index, -1);
-								DB.DeleteChest(cichest.id);
-								WorldGen.KillTile(cichest.x, cichest.y, noItem: true);
-								NetMessage.SendTileSquare(ciplayer.Index, cichest.x, cichest.y, 3);
-
-								int type;
-								if (netid == 3092)
-									type = 475;
-								else if (netid == 3091 && ciplayer.TPlayer.ZoneCrimson)
-									type = 474;
-								else //if (netid == 3091 && ciplayer.TPlayer.ZoneCorrupt)
-									type = 473;
-
-								var npc = TShock.Utils.GetNPCById(type);
-								TSPlayer.Server.SpawnNPC(npc.type, npc.FullName, 1, ciplayer.TileX, ciplayer.TileY, 10, 10);
-							}
-						}
-
-						if (cichest.isRefill)
-							circinfo.CurrentItems[itemslot] = item;
-						else
-						{
-							cichest.items[itemslot] = item;
-							DB.UpdateItems(cichest);
-						}
-
-						break;
-					case PacketTypes.ChestOpen:
-						chestid = reader.ReadInt16();
-						var chestx = reader.ReadInt16();
-						var chesty = reader.ReadInt16();
-						var namelength = reader.ReadByte();
-						string chestname = null;
-						if (namelength > 0)
-						{
-							chestname = reader.ReadString();
-							return;
-						}
-#if DEBUG
-						File.AppendAllText("debug.txt", $"[IN] 33 ChestName: Chest ID = {chestid} | Chest X = {chestx} | Chest Y = {chesty} | Name Length = {namelength} | Chest Name = {chestname}\n");
-#endif
-
-						if (chestid == -1)
-						{
-							PlayerInfo coinfo = TShock.Players[index].GetData<PlayerInfo>(PIString);
-							coinfo.ChestIdInUse = -1;
-							TShock.Players[index].SetData(PIString, coinfo);
-							NetMessage.SendData((int)PacketTypes.SyncPlayerChestIndex, -1, index, NetworkText.Empty, index, -1);
-						}
-
-						break;
-					case PacketTypes.TileKill:
-						if (lockChests)
-						{
-							TShock.Players[args.Msg.whoAmI].SendWarningMessage("Chests are currently being converted. Please wait for a few moments.");
-							return;
-						}
-
-						args.Handled = true;
-
-						var action = reader.ReadByte(); //0 placec 1 killc 2 placed 3 killd 4 placegc
-						tilex = reader.ReadInt16();
-						tiley = reader.ReadInt16();
-						var style = reader.ReadInt16();
-						//21 chest
-						//88 dresser
-						//467 golden/crystal chest
-						int chesttype;
-						if (action == 0 || action == 1)
-							chesttype = 21;
-						else if (action == 2 || action == 3)
-							chesttype = 88;
-						else if (action == 4 || action == 5)
-							chesttype = 467;
-						else
-							throw new Exception();
-
-						if (action == 0 || action == 2 || action == 4)
-						{
-							if (TShock.Regions.CanBuild(tilex, tiley, TShock.Players[index]))
-							{
-
-								Task.Factory.StartNew(() =>
-								{
-									if (action == 2)
-										tilex--;
-									InfChest newChest = new InfChest(TShock.Players[index].HasPermission("ic.protect") ? TShock.Players[index].User.ID : -1, tilex, tiley - 1, Main.worldID);
-									DB.AddChest(newChest);
-									if (action == 2)
-										tilex++;
-								});
-
-								WorldGen.PlaceChest(tilex, tiley, (ushort)(chesttype), false, style);
-								Main.chest[0] = null;
-								NetMessage.SendData((int)PacketTypes.TileKill, -1, -1, NetworkText.Empty, action, tilex, tiley, style);
-							}
-						}
-						else
-						{
-							if (Main.tile[tilex, tiley].type != 21 && Main.tile[tilex, tiley].type != 88 && Main.tile[tilex, tiley].type != 467)
+								TShock.Players[args.Msg.whoAmI].SendWarningMessage("Chests are currently being converted. Please wait for a few moments.");
 								return;
-							if (TShock.Regions.CanBuild(tilex, tiley, TShock.Players[index]))
-							{
-								if (Main.tile[tilex, tiley].frameY % 36 != 0)
-									tiley--;
-								if (Main.tile[tilex, tiley].frameX % 36 != 0)
-									tilex--;
-								#region Kill Chest
-								Task.Factory.StartNew(() =>
-								{
-									InfChest chest = DB.GetChest(tilex, tiley);
-									TSPlayer player = TShock.Players[index];
+							}
+							var tilex = reader.ReadInt16();
+							var tiley = reader.ReadInt16();
+#if DEBUG
+							File.AppendAllText("debug.txt", $"[IN] 31 ChestGetContents: Tile X = {tilex} | Tile Y = {tiley}\n");
+#endif
+							args.Handled = true;
 
-									//If chest exists in map but not db, something went wrong
-									if (chest == null)
+							#region GetChest
+							InfChest gchest = DB.GetChest(tilex, tiley);
+							TSPlayer gplayer = TShock.Players[index];
+
+							if (gchest == null)
+							{
+								gplayer.SendErrorMessage("This chest is corrupted.");
+								WorldGen.KillTile(tilex, tiley);
+								TSPlayer.All.SendData(PacketTypes.Tile, "", 0, tilex, tiley + 1);
+								return;
+							}
+
+							PlayerInfo info = gplayer.GetData<PlayerInfo>(PIString);
+
+							switch (info.Action)
+							{
+								case ChestAction.GetInfo:
 									{
-										player.SendWarningMessage("This chest is corrupted.");
-										WorldGen.KillTile(tilex, tiley);
-										TSPlayer.All.SendData(PacketTypes.Tile, "", 0, tilex, tiley + 1);
+										gplayer.SendInfoMessage($"X: {gchest.x} | Y: {gchest.y}");
+										string owner = gchest.userid == -1 ? "(None)" : TShock.UserAccounts.GetUserAccountByID(gchest.userid) == null ? "(Deleted User)" : TShock.UserAccounts.GetUserAccountByID(gchest.userid).Name;
+										string ispublic = gchest.isPublic ? " (Public)" : "";
+										string isrefill = gchest.refill > -1 ? $" (Refill: {gchest.refill})" : "";
+										gplayer.SendInfoMessage($"Chest Owner: {owner}{ispublic}{isrefill}");
+										if (gchest.groups.Count > 0 && !string.IsNullOrWhiteSpace(gchest.groups[0]))
+										{
+											string tinfo = string.Join(", ", gchest.groups);
+											gplayer.SendInfoMessage($"Groups Allowed: {tinfo}");
+										}
+										else
+											gplayer.SendInfoMessage("Groups Allowed: (None)");
+										if (gchest.users.Count > 0)
+										{
+											string tinfo = string.Join(", ", gchest.users.Select(p => TShock.UserAccounts.GetUserAccountByID(p) == null ? "(Deleted User)" : TShock.UserAccounts.GetUserAccountByID(p).Name));
+											gplayer.SendInfoMessage($"Users Allowed: {tinfo}");
+										}
+										else
+											gplayer.SendInfoMessage("Users Allowed: (None)");
+										break;
 									}
-									//check for perms - chest owner, claim, edit perm
-									else if (chest.userid != player.User.ID && chest.userid != -1 && !player.HasPermission("ic.edit"))
+								case ChestAction.Protect:
 									{
-										player.SendErrorMessage("This chest is protected.");
-										player.SendTileSquare(tilex, tiley, 3);
+										if (gchest.userid == gplayer.Account.ID)
+											gplayer.SendErrorMessage("This chest is already claimed by you!");
+										else if (gchest.userid != -1 && !gplayer.HasPermission("ic.edit"))
+											gplayer.SendErrorMessage("This chest is already claimed by someone else!");
+										else
+										{
+											gchest.userid = gplayer.Account.ID;
+											DB.UpdateUser(gchest);
+											gplayer.SendSuccessMessage("This chest is now claimed by you!");
+										}
+										break;
 									}
-									//check for empty chest
-									else if (!chest.isEmpty)
+								case ChestAction.Unprotect:
 									{
-										player.SendTileSquare(tilex, tiley, 3);
+										if (gchest.userid != gplayer.Account.ID && !gplayer.HasPermission("ic.edit"))
+											gplayer.SendErrorMessage("This chest is not yours!");
+										else if (gchest.userid == -1)
+											gplayer.SendErrorMessage("This chest is not claimed!");
+										else
+										{
+											gchest.userid = -1;
+											DB.UpdateUser(gchest);
+											gplayer.SendSuccessMessage("This chest is no longer claimed.");
+										}
+										break;
+									}
+								case ChestAction.SetGroup:
+									{
+										if (gchest.userid != gplayer.Account.ID && !gplayer.HasPermission("ic.edit"))
+											gplayer.SendErrorMessage("This chest is not yours!");
+										else if (gchest.userid == -1)
+											gplayer.SendErrorMessage("This chest is not claimed!");
+										else
+										{
+											if (gchest.groups.Contains(info.ExtraInfo))
+											{
+												gchest.groups.Remove(info.ExtraInfo);
+												gplayer.SendSuccessMessage($"Successfully removed group access from chest.");
+												DB.UpdateGroups(gchest);
+											}
+											else
+											{
+												gchest.groups.Add(info.ExtraInfo);
+												gplayer.SendSuccessMessage($"Successfully added group access to chest.");
+												DB.UpdateGroups(gchest);
+											}
+										}
+										break;
+									}
+								case ChestAction.SetRefill:
+									{
+										if (gchest.userid != gplayer.Account.ID && !gplayer.HasPermission("ic.edit"))
+											gplayer.SendErrorMessage("This chest is not yours!");
+										else if (gchest.userid == -1)
+											gplayer.SendErrorMessage("This chest is not claimed!");
+										else
+										{
+											int refilltime = int.Parse(info.ExtraInfo);
+											gchest.refill = refilltime;
+											DB.UpdateRefill(gchest);
+											gplayer.SendSuccessMessage("Successfull set refill time to " + (refilltime == -1 ? "(none)." : refilltime.ToString() + "."));
+										}
+										break;
+									}
+								case ChestAction.SetUser:
+									{
+										if (gchest.userid != gplayer.Account.ID && !gplayer.HasPermission("ic.edit"))
+											gplayer.SendErrorMessage("This chest is not yours!");
+										else if (gchest.userid == -1)
+											gplayer.SendErrorMessage("This chest is not claimed!");
+										else
+										{
+											int userid = int.Parse(info.ExtraInfo);
+											if (gchest.users.Contains(userid))
+											{
+												gchest.users.Remove(userid);
+												DB.UpdateUsers(gchest);
+												gplayer.SendSuccessMessage("Successfully removed user access from chest.");
+											}
+											else
+											{
+												gchest.users.Add(userid);
+												DB.UpdateUsers(gchest);
+												gplayer.SendSuccessMessage("Successfully added user access to chest.");
+											}
+										}
+										break;
+									}
+								case ChestAction.TogglePublic:
+									{
+										if (gchest.userid != gplayer.Account.ID && !gplayer.HasPermission("ic.edit"))
+											gplayer.SendErrorMessage("This chest is not yours!");
+										else if (gchest.userid == -1)
+											gplayer.SendErrorMessage("This chest is not claimed!");
+										else
+										{
+											if (gchest.isPublic)
+											{
+												gchest.isPublic = false;
+												DB.UpdatePublic(gchest);
+												gplayer.SendSuccessMessage("Successfully set chest as private.");
+											}
+											else
+											{
+												gchest.isPublic = true;
+												DB.UpdatePublic(gchest);
+												gplayer.SendSuccessMessage("Successfully set chest as public.");
+											}
+										}
+										break;
+									}
+								case ChestAction.None:
+									{
+										//check for perms
+										if (gchest.userid != -1 && !gchest.isPublic && !gchest.groups.Contains(gplayer.Group.Name) && !gplayer.HasPermission("ic.edit") && gplayer.IsLoggedIn && gchest.userid != gplayer.Account.ID && !gchest.users.Contains(gplayer.Account.ID))
+										{
+											gplayer.SendErrorMessage("This chest is protected.");
+											break;
+										}
+
+										info.ChestIdInUse = gchest.id;
+
+										Item[] items;
+										RefillChestInfo rcinfo = GetRCInfo(!gplayer.IsLoggedIn ? -1 : gplayer.Account.ID, gchest.id);
+
+										//use refill items if exists, or create new refill entry, or use items directly
+										if (gchest.isRefill && rcinfo != null && (DateTime.Now - rcinfo.TimeOpened).TotalSeconds < gchest.refill)
+											items = rcinfo.CurrentItems;
+										else if (gchest.isRefill)
+										{
+											if (rcinfo != null)
+												DeleteOldRCInfo(!gplayer.IsLoggedIn ? -1 : gplayer.Account.ID, gchest.id);
+
+											RefillChestInfo newrcinfo = new RefillChestInfo()
+											{
+												ChestID = gchest.id,
+												CurrentItems = gchest.items,
+												PlayerID = !gplayer.IsLoggedIn ? -1 : gplayer.Account.ID,
+												TimeOpened = DateTime.Now
+											};
+											RCInfos.Add(newrcinfo);
+											items = newrcinfo.CurrentItems;
+										}
+										else
+											items = gchest.items;
+
+										int tempchest = GetNextChestId();
+										Main.chest[tempchest] = new Chest()
+										{
+											item = items,
+											x = gchest.x,
+											y = gchest.y
+										};
+
+										for (int i = 0; i < 40; i++)
+										{
+											gplayer.SendData(PacketTypes.ChestItem, "", tempchest, i, gchest.items[i].stack, gchest.items[i].prefix, gchest.items[i].netID);
+										}
+										gplayer.SendData(PacketTypes.ChestOpen, "", tempchest, gchest.x, gchest.y);
+										NetMessage.SendData((int)PacketTypes.SyncPlayerChestIndex, -1, index, NetworkText.Empty, index, tempchest);
+
+										Main.chest[tempchest] = null;
+										break;
+									}
+							}
+							info.Action = ChestAction.None;
+							info.ExtraInfo = "";
+							gplayer.SetData(PIString, info);
+							#endregion
+
+							break;
+						}
+					case PacketTypes.ChestItem:
+						{
+							if (lockChests)
+							{
+								TShock.Players[args.Msg.whoAmI].SendWarningMessage("Chests are currently being converted. Please wait for a few moments.");
+								return;
+							}
+
+							var chestid = reader.ReadInt16();
+							var itemslot = reader.ReadByte();
+							var stack = reader.ReadInt16();
+							var prefix = reader.ReadByte();
+							var netid = reader.ReadInt16();
+#if DEBUG
+							if (itemslot == 0 || itemslot == 39)
+								File.AppendAllText("debug.txt", $"[IN] 32 ChestItem: Chest ID = {chestid} | Item Slot = {itemslot} | Stack = {stack} | Prefix = {prefix} | Net ID = {netid}\n");
+#endif
+
+							TSPlayer ciplayer = TShock.Players[index];
+							PlayerInfo piinfo = ciplayer.GetData<PlayerInfo>(PIString);
+							if (piinfo.ChestIdInUse == -1)
+								return;
+							InfChest cichest = DB.GetChest(piinfo.ChestIdInUse);
+							RefillChestInfo circinfo = GetRCInfo(!TShock.Players[index].IsLoggedIn ? -1 : TShock.Players[index].Account.ID, cichest.id);
+							if (cichest == null)
+							{
+								ciplayer.SendWarningMessage("This chest is corrupted. Please remove it.");
+								return;
+							}
+
+							Item item = new Item();
+							item.SetDefaults(netid);
+							item.stack = stack;
+							item.prefix = prefix;
+
+							if (ciplayer.HasPermission(Permissions.spawnmob) && Main.hardMode && (item.netID == 3091 && (ciplayer.TPlayer.ZoneCrimson || ciplayer.TPlayer.ZoneCorrupt)))
+							{
+								bool empty = true;
+								foreach (var initem in cichest.items)
+								{
+									if (initem?.netID != 0)
+									{
+										empty = false;
+									}
+								}
+								if (empty)
+								{
+									//kick player out of chest, kill chest, spawn appropriate mimic
+									piinfo.ChestIdInUse = -1;
+									ciplayer.SetData(PIString, piinfo);
+									NetMessage.SendData((int)PacketTypes.SyncPlayerChestIndex, -1, index, NetworkText.Empty, index, -1);
+									DB.DeleteChest(cichest.id);
+									WorldGen.KillTile(cichest.x, cichest.y, noItem: true);
+									NetMessage.SendTileSquare(ciplayer.Index, cichest.x, cichest.y, 3);
+
+									int type;
+									if (netid == 3092)
+										type = 475;
+									else if (netid == 3091 && ciplayer.TPlayer.ZoneCrimson)
+										type = 474;
+									else //if (netid == 3091 && ciplayer.TPlayer.ZoneCorrupt)
+										type = 473;
+
+									var npc = TShock.Utils.GetNPCById(type);
+									TSPlayer.Server.SpawnNPC(npc.type, npc.FullName, 1, ciplayer.TileX, ciplayer.TileY, 10, 10);
+								}
+							}
+
+							if (cichest.isRefill)
+								circinfo.CurrentItems[itemslot] = item;
+							else
+							{
+								cichest.items[itemslot] = item;
+								DB.UpdateItems(cichest);
+							}
+
+							break;
+						}
+					case PacketTypes.ChestOpen:
+						{
+							var chestid = reader.ReadInt16();
+							var chestx = reader.ReadInt16();
+							var chesty = reader.ReadInt16();
+							var namelength = reader.ReadByte();
+							string chestname = null;
+							if (namelength > 0)
+							{
+								chestname = reader.ReadString();
+								return;
+							}
+#if DEBUG
+							File.AppendAllText("debug.txt", $"[IN] 33 ChestName: Chest ID = {chestid} | Chest X = {chestx} | Chest Y = {chesty} | Name Length = {namelength} | Chest Name = {chestname}\n");
+#endif
+
+							if (chestid == -1)
+							{
+								PlayerInfo coinfo = TShock.Players[index].GetData<PlayerInfo>(PIString);
+								coinfo.ChestIdInUse = -1;
+								TShock.Players[index].SetData(PIString, coinfo);
+								NetMessage.SendData((int)PacketTypes.SyncPlayerChestIndex, -1, index, NetworkText.Empty, index, -1);
+							}
+
+							break;
+						}
+					case PacketTypes.PlaceChest:
+						{
+							if (lockChests)
+							{
+								TShock.Players[args.Msg.whoAmI].SendWarningMessage("Chests are currently being converted. Please wait for a few moments.");
+								return;
+							}
+
+							args.Handled = true;
+
+							var action = reader.ReadByte(); //0 placec 1 killc 2 placed 3 killd 4 placegc
+							var tilex = reader.ReadInt16();
+							var tiley = reader.ReadInt16();
+							var style = reader.ReadInt16();
+							// Ignoring "chest ID to destroy" because we aren't using chest IDs
+							reader.ReadInt16(); 
+							//21 chest
+							//88 dresser
+							//467 golden/crystal chest
+							int chesttype;
+							if (action == 0 || action == 1)
+								chesttype = 21;
+							else if (action == 2 || action == 3)
+								chesttype = 88;
+							else if (action == 4 || action == 5)
+								chesttype = 467;
+							else
+								throw new Exception();
+
+							if (action == 0 || action == 2 || action == 4)
+							{
+								if (TShock.Regions.CanBuild(tilex, tiley, TShock.Players[index]))
+								{
+									Task.Factory.StartNew(() =>
+									{
+										int temp_tile_x = tilex;
+										if (action == 2)
+											temp_tile_x--;
+										InfChest newChest = new InfChest(TShock.Players[index].HasPermission("ic.protect") ? TShock.Players[index].Account.ID : -1, temp_tile_x, tiley - 1, Main.worldID);
+										DB.AddChest(newChest);
+									});
+
+									int success = WorldGen.PlaceChest(tilex, tiley, (ushort)chesttype, false, style);
+									if (success == -1)
+									{
+										NetMessage.TrySendData((int)PacketTypes.PlaceChest, index, -1, null, action, tilex, tiley, style);
+										Item.NewItem(tilex * 16, tiley * 16, 32, 32, Chest.chestItemSpawn[style], 1, noBroadcast: true);
 									}
 									else
 									{
-										WorldGen.KillTile(tilex, tiley);
-										DB.DeleteChest(chest.id);
-										TSPlayer.All.SendData(PacketTypes.Tile, "", 0, tilex, tiley + 1);
+										Main.chest[0] = null;
+										NetMessage.SendData((int)PacketTypes.PlaceChest, -1, -1, null, action, tilex, tiley, style);
 									}
-								});
-								#endregion
+								}
 							}
-						}
+							else
+							{
+								if (Main.tile[tilex, tiley].type != 21 && Main.tile[tilex, tiley].type != 88 && Main.tile[tilex, tiley].type != 467)
+									return;
+								if (TShock.Regions.CanBuild(tilex, tiley, TShock.Players[index]))
+								{
+									if (Main.tile[tilex, tiley].frameY % 36 != 0)
+										tiley--;
+									if ((action == 1 || action == 5) && Main.tile[tilex, tiley].frameX % 36 != 0)
+										tilex--;
+									if (action == 3)
+										tilex -= (short)(Main.tile[tilex, tiley].frameX % 54 / 18);
+									#region Kill Chest
+									Task.Factory.StartNew(() =>
+									{
+										InfChest chest = DB.GetChest(tilex, tiley);
+										TSPlayer player = TShock.Players[index];
+
+										//If chest exists in map but not db, something went wrong
+										if (chest == null)
+										{
+											player.SendWarningMessage("This chest is corrupted.");
+											WorldGen.KillTile(tilex, tiley);
+											TSPlayer.All.SendData(PacketTypes.Tile, null, 0, tilex, tiley + 1);
+										}
+										//check for perms - chest owner, claim, edit perm
+										else if (chest.userid != player.Account.ID && chest.userid != -1 && !player.HasPermission("ic.edit"))
+										{
+											player.SendErrorMessage("This chest is protected.");
+											player.SendTileSquare(tilex, tiley, 3);
+										}
+										//check for empty chest
+										else if (!chest.isEmpty)
+										{
+											player.SendTileSquare(tilex, tiley, 3);
+										}
+										else
+										{
+											int tempchest = GetNextChestId();
+											Main.chest[tempchest] = new Chest()
+											{
+												item = new Item[40],
+												x = tilex,
+												y = tiley
+											};
+
+											WorldGen.KillTile(tilex, tiley);
+											DB.DeleteChest(chest.id);
+											NetMessage.TrySendData((int)PacketTypes.PlaceChest, -1, -1, null, tempchest, tilex, tiley);
+										}
+									});
+									#endregion
+								}
+							}
 
 #if DEBUG
-						File.AppendAllText("debug.txt", $"[IN] 34 PlaceChest: Action = {action} | Tile X = {tilex} | Tile Y = {tiley} | Style = {style}\n");
+							File.AppendAllText("debug.txt", $"[IN] 34 PlaceChest: Action = {action} | Tile X = {tilex} | Tile Y = {tiley} | Style = {style}\n");
 #endif
-						break;
+							break;
+						}
 					case PacketTypes.ChestName:
-						chestid = reader.ReadInt16();
-						chestx = reader.ReadInt16();
-						chesty = reader.ReadInt16();
+						{
+							var chestid = reader.ReadInt16();
+							var chestx = reader.ReadInt16();
+							var chesty = reader.ReadInt16();
 #if DEBUG
-						File.AppendAllText("debug.txt", $"[IN] 69 GetChestName: Chest ID = {chestid} | Chest X = {chestx} | Chest Y = {chesty}\n");
+							File.AppendAllText("debug.txt", $"[IN] 69 GetChestName: Chest ID = {chestid} | Chest X = {chestx} | Chest Y = {chesty}\n");
 #endif
-						break;
+							break;
+						}
 				}
 			}
 
@@ -539,7 +583,7 @@ namespace InfiniteChestsV3
 					File.AppendAllText("debug.txt", $"[OUT] 33 SetChestName: Remote = {args.remoteClient} | Ignore = {args.ignoreClient} | Chest ID = {args.number} | Chest X = {args.number2} | Chest Y = {args.number3} | Name Length = {args.number4} | Chest Name = {args.text}\n");
 #endif
 					break;
-				case PacketTypes.TileKill:
+				case PacketTypes.PlaceChest:
 #if DEBUG
 					File.AppendAllText("debug.txt", $"[OUT] 34 PlaceChest: Remote = {args.remoteClient} | Ignore = {args.ignoreClient} | Action = {args.number} | Tile X = {args.number2} | Tile Y = {args.number3} | Style = {args.number4} | Chest ID = {args.number5}\n");
 #endif
@@ -685,7 +729,7 @@ namespace InfiniteChestsV3
 					else
 					{
 						name = string.Join(" ", args.Parameters.GetRange(1, args.Parameters.Count - 1));
-						var user = TShock.Users.GetUserByName(name);
+						var user = TShock.UserAccounts.GetUserAccountByName(name);
 
 						if (user == null)
 						{
@@ -708,7 +752,7 @@ namespace InfiniteChestsV3
 					else
 					{
 						name = string.Join(" ", args.Parameters.GetRange(1, args.Parameters.Count - 1));
-						var user = TShock.Users.GetUserByName(name);
+						var user = TShock.UserAccounts.GetUserAccountByName(name);
 
 						if (user == null)
 						{

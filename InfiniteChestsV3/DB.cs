@@ -253,7 +253,7 @@ namespace InfiniteChestsV3
 								string account = reader.Get<string>("Account");
 								string rawitems = reader.Get<string>("Items");
 								int refill = reader.Get<int>("RefillTime");
-								User user = TShock.Users.GetUserByName(account);
+								UserAccount user = TShock.UserAccounts.GetUserAccountByName(account);
 								InfChest chest = new InfChest(user == null ? -1 : user.ID, x, y, Main.worldID);
 								if (refill > -1)
 									chest.refill = refill;
@@ -289,7 +289,7 @@ namespace InfiniteChestsV3
 						string account = reader.Get<string>("Account");
 						string rawitems = reader.Get<string>("Items");
 						int refill = reader.Get<int>("RefillTime");
-						User user = TShock.Users.GetUserByName(account);
+						UserAccount user = TShock.UserAccounts.GetUserAccountByName(account);
 						InfChest chest = new InfChest(user == null ? -1 : user.ID, x, y, Main.worldID);
 						if (refill > -1)
 							chest.refill = refill;

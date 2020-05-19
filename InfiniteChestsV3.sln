@@ -1,9 +1,22 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.26430.15
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30011.22
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InfiniteChestsV3", "InfiniteChestsV3\InfiniteChestsV3.csproj", "{7B49FF3F-F30A-413B-B8C0-7C59DDCFA5C1}"
+EndProject
+Project("{911E67C6-3D85-4FCE-B560-20A9C3E3FF48}") = "TerrariaServer", "..\..\..\Desktop\TShock 4.4.0-dev\TerrariaServer.exe", "{92CF58D1-DD58-43FA-B96A-DD284DFF0D9E}"
+	ProjectSection(DebuggerProjectSystem) = preProject
+		PortSupplier = 00000000-0000-0000-0000-000000000000
+		Executable = C:\Users\kzaic\Desktop\TShock 4.4.0-dev\TerrariaServer.exe
+		RemoteMachine = CLAY-PC
+		StartingDirectory = C:\Users\kzaic\Desktop\TShock 4.4.0-dev
+		Environment = Default
+		LaunchingEngine = 00000000-0000-0000-0000-000000000000
+		UseLegacyDebugEngines = No
+		LaunchSQLEngine = No
+		AttachLaunchAction = No
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,8 +34,15 @@ Global
 		{7B49FF3F-F30A-413B-B8C0-7C59DDCFA5C1}.Release|Any CPU.Build.0 = Release|Any CPU
 		{7B49FF3F-F30A-413B-B8C0-7C59DDCFA5C1}.Release|x86.ActiveCfg = Release|Any CPU
 		{7B49FF3F-F30A-413B-B8C0-7C59DDCFA5C1}.Release|x86.Build.0 = Release|Any CPU
+		{92CF58D1-DD58-43FA-B96A-DD284DFF0D9E}.Debug|Any CPU.ActiveCfg = Release|x86
+		{92CF58D1-DD58-43FA-B96A-DD284DFF0D9E}.Debug|x86.ActiveCfg = Release|x86
+		{92CF58D1-DD58-43FA-B96A-DD284DFF0D9E}.Release|Any CPU.ActiveCfg = Release|x86
+		{92CF58D1-DD58-43FA-B96A-DD284DFF0D9E}.Release|x86.ActiveCfg = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D6918228-3308-45DF-80C6-CBCB19027B5A}
 	EndGlobalSection
 EndGlobal

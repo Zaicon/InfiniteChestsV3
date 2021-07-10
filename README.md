@@ -1,9 +1,11 @@
+This is updated for TShock 4.5.4 / Terraria 1.4.2.3, with my fixes for [Zaicon/InfiniteChestsV3](https://github.com/Zaicon/InfiniteChestsV3) [#6](https://github.com/Zaicon/InfiniteChestsV3/issues/6), [#10]((https://github.com/Zaicon/InfiniteChestsV3/issues/11)), and [#11](https://github.com/Zaicon/InfiniteChestsV3/issues/11) from back in 2020. If anyone wants to tackle any other issues, please feel free to send PRs. - Mopquill
+
 # InfiniteChestsV3
 
 This is a completely rewritten version of MarioE's original InfiniteChests plugin. Most of this plugin was copied or modified from that one.
 
 ### Plugin Features:
-- Saves chests to database, allowing more than 1,000 chests per map.
+- Saves chests to database, allowing more than 8,000 chests per map.
 - Allows conversion of chest storage to/from database at will.
 - Allows chests to be "claimed" (protected) by users.
 - Allows chests to be "public" (other users can edit but not destroy).

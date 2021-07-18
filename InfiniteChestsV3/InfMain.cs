@@ -370,7 +370,7 @@ namespace InfiniteChestsV3
 							item.stack = stack;
 							item.prefix = prefix;
 
-							if (ciplayer.HasPermission(Permissions.spawnmob) && Main.hardMode && (item.netID == 3091 && (ciplayer.TPlayer.ZoneCrimson || ciplayer.TPlayer.ZoneCorrupt)))
+							if (ciplayer.HasPermission(Permissions.spawnmob) && Main.hardMode && (item.netID == 3092 || item.netID == 3091))
 							{
 								bool empty = true;
 								foreach (var initem in cichest.items)
@@ -388,15 +388,19 @@ namespace InfiniteChestsV3
 									NetMessage.SendData((int)PacketTypes.SyncPlayerChestIndex, -1, index, NetworkText.Empty, index, -1);
 									DB.DeleteChest(cichest.id);
 									WorldGen.KillTile(cichest.x, cichest.y, noItem: true);
+									TSPlayer.All.SendData(PacketTypes.Tile, null, 0, cichest.x, cichest.y + 1);
 									NetMessage.SendTileSquare(ciplayer.Index, cichest.x, cichest.y, 3);
 
 									int type;
+									var random = new Random(Guid.NewGuid().GetHashCode());
 									if (netid == 3092)
 										type = 475;
 									else if (netid == 3091 && ciplayer.TPlayer.ZoneCrimson)
 										type = 474;
-									else //if (netid == 3091 && ciplayer.TPlayer.ZoneCorrupt)
+									else if (netid == 3091 && ciplayer.TPlayer.ZoneCorrupt)
 										type = 473;
+									else
+										type = random.Next(473, 475); // Min value is inclusive, max value is exclusive, i.e. this means int [473,475)
 
 									var npc = TShock.Utils.GetNPCById(type);
 									TSPlayer.Server.SpawnNPC(npc.type, npc.FullName, 1, ciplayer.TileX, ciplayer.TileY, 10, 10);
@@ -633,8 +637,7 @@ namespace InfiniteChestsV3
 					help.Add("/chest refill <seconds>");
 				help.Add("/chest cancel");
 
-				int pageNumber;
-				if (!PaginationTools.TryParsePageNumber(args.Parameters, 1, args.Player, out pageNumber))
+				if (!PaginationTools.TryParsePageNumber(args.Parameters, 1, args.Player, out int pageNumber))
 					return;
 
 				PaginationTools.SendPage(args.Player, pageNumber, help, new PaginationTools.Settings() { HeaderFormat = "Chest Subcommands ({0}/{1}):", FooterFormat = "Type /chest help {0} for more." });
@@ -862,9 +865,9 @@ namespace InfiniteChestsV3
 					args.Player.SendErrorMessage("This command has already been run!");
 					return;
 				}
-				if (DB.GetCount() > 1000)
+				if (DB.GetCount() > 8000) // Max is 8000: https://terraria.gamepedia.com/Chests
 				{
-					args.Player.SendErrorMessage("There are more than 1000 chests in the database, which is more than the map can hold.");
+					args.Player.SendErrorMessage("There are more than 8000 chests in the database, which is more than the map can hold.");
 					return;
 				}
 				args.Player.SendInfoMessage("Restoring chests. Please wait...");
